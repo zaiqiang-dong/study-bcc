@@ -21,9 +21,9 @@ scripts/docker/output/
 src/cc/compat/linux/bpf.h
 
 # ignore cscope file
-cscope.*
-ncscope.*
+**/cscope.*
+**/ncscope.*
 
 # ctags
-/tags
+**/tags
 
