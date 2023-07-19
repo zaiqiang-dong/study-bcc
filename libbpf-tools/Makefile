@@ -147,6 +147,11 @@ ifeq ($(USE_BLAZESYM),1)
 CFLAGS += -DUSE_BLAZESYM=1
 endif
 
+# user static for arm64
+ifeq ($(ARCH),arm64)
+CFLAGS += -static
+endif
+
 ifeq ($(USE_BLAZESYM),1)
 LDFLAGS += $(OUTPUT)/libblazesym.a -lrt -lpthread -ldl
 endif
