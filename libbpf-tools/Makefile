@@ -164,7 +164,7 @@ endif
 .PHONY: clean
 clean:
 	$(call msg,CLEAN)
-	$(Q)rm -rf $(OUTPUT) $(APPS) $(APP_ALIASES)
+	$(Q)rm -rf $(OUTPUT) $(APPS) $(APP_ALIASES) $(OUTPUT_BIN)
 
 $(LIBBLAZESYM_SRC)::
 	$(Q)cd blazesym && cargo build --release --features=cheader
