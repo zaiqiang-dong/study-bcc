@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
 OUTPUT := $(abspath .output)
+OUTPUT_BIN := $(abspath ./bin/)
 CLANG ?= clang
 LLVM_STRIP ?= llvm-strip
 BPFTOOL_SRC := $(abspath ./bpftool/src)
@@ -176,7 +177,7 @@ $(OUTPUT)/blazesym.h: $(LIBBLAZESYM_SRC) | $(OUTPUT)
 	$(call msg,INC,$@)
 	$(Q)cp blazesym/target/release/blazesym.h $@
 
-$(OUTPUT) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT) $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC):
+$(OUTPUT) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT) $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC) $(OUTPUT_BIN):
 	$(call msg,MKDIR,$@)
 	$(Q)mkdir -p $@
 
@@ -184,13 +185,13 @@ $(BPFTOOL): | $(BPFTOOL_OUTPUT)
 	$(call msg,BPFTOOL,$@)
 	$(Q)$(MAKE) ARCH= CROSS_COMPILE=  OUTPUT=$(BPFTOOL_OUTPUT)/ -C $(BPFTOOL_SRC) bootstrap
 
-$(APPS): %: $(OUTPUT)/%.o $(COMMON_OBJ) $(LIBBPF_OBJ) | $(OUTPUT)
+$(APPS): %: $(OUTPUT)/%.o $(COMMON_OBJ) $(LIBBPF_OBJ) | $(OUTPUT) $(OUTPUT_BIN)
 	$(call msg,BINARY,$@)
-	$(Q)$(CC) $(CFLAGS) $^ $(LDFLAGS) -lelf -lz -o $@
+	$(Q)$(CC) $(CFLAGS) $^ $(LDFLAGS) -lelf -lz -o $(OUTPUT_BIN)/$@
 
-$(LIBBPF_EXAMPLE_APP): %: $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.o $(COMMON_OBJ) $(LIBBPF_OBJ) | $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)
+$(LIBBPF_EXAMPLE_APP): %: $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.o $(COMMON_OBJ) $(LIBBPF_OBJ) | $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC) $(OUTPUT_BIN)
 	$(call msg,BINARY,$@)
-	$(Q)$(CC) $(CFLAGS) $^ $(LDFLAGS) -lelf -lz -o $(LIBBPF_EXAMPLE_SRC)/$@
+	$(Q)$(CC) $(CFLAGS) $^ $(LDFLAGS) -lelf -lz -o $(OUTPUT_BIN)/$@
 
 
 ifeq ($(USE_BLAZESYM),1)
@@ -249,15 +250,15 @@ $(LIBBPF_OBJ): $(wildcard $(LIBBPF_SRC)/*.[ch]) | $(OUTPUT)/libbpf
 
 $(FSSLOWER_ALIASES): fsslower
 	$(call msg,SYMLINK,$@)
-	$(Q)ln -f -s $^ $@
+	$(Q)ln -f -s $(OUTPUT_BIN)/$^ $(OUTPUT_BIN)/$@
 
 $(FSDIST_ALIASES): fsdist
 	$(call msg,SYMLINK,$@)
-	$(Q)ln -f -s $^ $@
+	$(Q)ln -f -s $(OUTPUT_BIN)/$^ $(OUTPUT_BIN)/$@
 
 $(SIGSNOOP_ALIAS): sigsnoop
 	$(call msg,SYMLINK,$@)
-	$(Q)ln -f -s $^ $@
+	$(Q)ln -f -s $(OUTPUT_BIN)/$^ $(OUTPUT_BIN)/$@
 
 install: $(APPS) $(APP_ALIASES)
 	$(call msg, INSTALL libbpf-tools)
