@@ -8,7 +8,8 @@ BPFTOOL ?= $(BPFTOOL_OUTPUT)/bootstrap/bpftool
 LIBBPF_SRC := $(abspath ../src/cc/libbpf/src)
 LIBBPF_OBJ := $(abspath $(OUTPUT)/libbpf.a)
 LIBBLAZESYM_SRC := $(abspath blazesym/target/release/libblazesym.a)
-INCLUDES := -I$(OUTPUT) -I../src/cc/libbpf/include/uapi
+LIBBPF_EXAMPLE_SRC := libbpf-example
+INCLUDES := -I$(OUTPUT) -I../src/cc/libbpf/include/uapi -I$(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)
 CFLAGS := -g -O2 -Wall
 BPFCFLAGS := -g -O2 -Wall
 INSTALL ?= install
@@ -33,6 +34,9 @@ endif
 BZ_APPS = \
 	memleak \
 	opensnoop \
+	#
+LIBBPF_EXAMPLE_APP = \
+	uprobe \
 	#
 
 APPS = \
@@ -126,7 +130,7 @@ $(call allow-override,CC,$(CROSS_COMPILE)cc)
 $(call allow-override,LD,$(CROSS_COMPILE)ld)
 
 .PHONY: all
-all: $(APPS) $(APP_ALIASES)
+all: $(APPS) $(APP_ALIASES) $(LIBBPF_EXAMPLE_APP)
 
 ifeq ($(V),1)
 Q =
@@ -172,7 +176,7 @@ $(OUTPUT)/blazesym.h: $(LIBBLAZESYM_SRC) | $(OUTPUT)
 	$(call msg,INC,$@)
 	$(Q)cp blazesym/target/release/blazesym.h $@
 
-$(OUTPUT) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT):
+$(OUTPUT) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT) $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC):
 	$(call msg,MKDIR,$@)
 	$(Q)mkdir -p $@
 
@@ -183,6 +187,11 @@ $(BPFTOOL): | $(BPFTOOL_OUTPUT)
 $(APPS): %: $(OUTPUT)/%.o $(COMMON_OBJ) $(LIBBPF_OBJ) | $(OUTPUT)
 	$(call msg,BINARY,$@)
 	$(Q)$(CC) $(CFLAGS) $^ $(LDFLAGS) -lelf -lz -o $@
+
+$(LIBBPF_EXAMPLE_APP): %: $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.o $(COMMON_OBJ) $(LIBBPF_OBJ) | $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)
+	$(call msg,BINARY,$@)
+	$(Q)$(CC) $(CFLAGS) $^ $(LDFLAGS) -lelf -lz -o $(LIBBPF_EXAMPLE_SRC)/$@
+
 
 ifeq ($(USE_BLAZESYM),1)
 $(patsubst %,$(OUTPUT)/%.o,$(BZ_APPS)): $(OUTPUT)/blazesym.h
@@ -199,6 +208,22 @@ $(OUTPUT)/%.skel.h: $(OUTPUT)/%.bpf.o | $(OUTPUT) $(BPFTOOL)
 	$(Q)$(BPFTOOL) gen skeleton $< > $@
 
 $(OUTPUT)/%.bpf.o: %.bpf.c $(LIBBPF_OBJ) $(wildcard %.h) $(ARCH)/vmlinux.h | $(OUTPUT)
+	$(call msg,BPF,$@)
+	$(Q)$(CLANG) $(BPFCFLAGS) -target bpf -D__TARGET_ARCH_$(ARCH)	      \
+		     -I$(ARCH)/ $(INCLUDES) -c $(filter %.c,$^) -o $@ &&      \
+	$(LLVM_STRIP) -g $@
+
+$(patsubst %,$(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.o,$(LIBBPF_EXAMPLE_APP)): %.o: %.skel.h
+
+$(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.o: $(LIBBPF_EXAMPLE_SRC)/%.c $(wildcard %.h) $(LIBBPF_OBJ) | $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)
+	$(call msg,CC,$@)
+	$(Q)$(CC) $(CFLAGS) $(INCLUDES) -c $(filter %.c,$^) -o $@
+
+$(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.skel.h: $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.bpf.o | $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC) $(BPFTOOL)
+	$(call msg,GEN-SKEL,$@)
+	$(Q)$(BPFTOOL) gen skeleton $< > $@
+
+$(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)/%.bpf.o: $(LIBBPF_EXAMPLE_SRC)/%.bpf.c $(LIBBPF_OBJ) $(wildcard %.h) $(ARCH)/vmlinux.h | $(OUTPUT)/$(LIBBPF_EXAMPLE_SRC)
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) $(BPFCFLAGS) -target bpf -D__TARGET_ARCH_$(ARCH)	      \
 		     -I$(ARCH)/ $(INCLUDES) -c $(filter %.c,$^) -o $@ &&      \
