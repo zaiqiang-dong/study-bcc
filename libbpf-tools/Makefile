@@ -36,8 +36,19 @@ BZ_APPS = \
 	memleak \
 	opensnoop \
 	#
+
 LIBBPF_EXAMPLE_APP = \
+	usdt \
+	sockfilter \
+	ksyscall \
+	tc \
+	kprobe \
+	bootstrap \
+	minimal_legacy \
 	uprobe \
+	fentry \
+	minimal \
+	minimal_ns \
 	#
 
 APPS = \
