@@ -44,12 +44,12 @@ ssize_t get_uprobe_offset(const void *addr)
 }
 
 /* It's a global function to make sure compiler doesn't inline it. */
-int uprobed_add(int a, int b)
+int __attribute__((weak)) uprobed_add(int a, int b)
 {
 	return a + b;
 }
 
-int uprobed_sub(int a, int b)
+int __attribute__((weak)) uprobed_sub(int a, int b)
 {
 	return a - b;
 }
